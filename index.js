@@ -11,14 +11,14 @@ const server = http.createServer(app)
 // Socket.io setup with CORS
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000","https://shareeverything.vercel.app"],
+    origin: ["http://localhost:3000","https://shareeverything.vercel.app","https://sendanything.online"],
     methods: ["GET", "POST"]
   }
 })
 
 // Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://shareeverything.vercel.app"],
+  origin: ["http://localhost:3000", "https://shareeverything.vercel.app","https://www.sendanything.online"],
   credentials: true
 }))
 app.use(express.json())
