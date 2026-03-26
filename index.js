@@ -9,18 +9,26 @@ const app = express()
 const server = http.createServer(app)
 
 // Socket.io setup with CORS
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://shareeverything.vercel.app",
+  "https://sendanything.online",
+  "https://www.sendanything.online"
+];
+
 const io = socketIo(server, {
   cors: {
-    origin: ["http://localhost:3000","https://shareeverything.vercel.app","https://sendanything.online"],
-    methods: ["GET", "POST"]
-  }
-})
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ["websocket", "polling"] // allow upgrade
+});
 
-// Middleware
 app.use(cors({
-  origin: ["http://localhost:3000", "https://shareeverything.vercel.app","https://www.sendanything.online"],
+  origin: allowedOrigins,
   credentials: true
-}))
+}));
 app.use(express.json())
 
 // Connect to database
