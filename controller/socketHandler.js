@@ -3,13 +3,15 @@ const Session = require('../models/Session')
 // In-memory store for instant-share rooms
 const instantRooms = {}
 
+// In-memory group mode flags per sessionId
+const groupSessions = {} // { [sessionId]: { groupMode: bool, peers: Set<socketId> } }
+
 // Auto-cleanup inactive rooms every 60s
 setInterval(() => {
   const now = Date.now()
   for (const roomId in instantRooms) {
     if (now - instantRooms[roomId].lastActive > 10 * 60 * 1000) {
       delete instantRooms[roomId]
-      console.log(`Auto cleaned instant room: ${roomId}`)
     }
   }
 }, 60000)
@@ -86,16 +88,27 @@ module.exports = (io) => {
         // Join room
         socket.join(sessionId)
         socket.sessionId = sessionId
-        
-        // Notify others
+
+        // Track peer in group session store
+        if (!groupSessions[sessionId]) {
+          groupSessions[sessionId] = { groupMode: false, peers: new Set() }
+        }
+        const gs = groupSessions[sessionId]
+        const existingPeers = [...gs.peers] // peers already in room
+        gs.peers.add(socket.id)
+
+        // Notify others in room
         socket.to(sessionId).emit('user-joined', {
           userId: socket.id,
           message: 'Someone joined the session'
         })
-        
+
         socket.emit('session-joined', {
           sessionId,
-          message: 'Successfully joined session'
+          message: 'Successfully joined session',
+          groupMode: gs.groupMode,
+          // In group mode, send list of existing peers so new joiner can connect to all
+          existingPeers: gs.groupMode ? existingPeers : [],
         })
         
         console.log(`User ${socket.id} joined session: ${sessionId}`)
@@ -105,6 +118,15 @@ module.exports = (io) => {
       }
     })
     
+    // Toggle group mode for a session (owner only — first joiner)
+    socket.on('toggle-group-mode', ({ sessionId, enabled }) => {
+      const gs = groupSessions[sessionId]
+      if (!gs) return
+      gs.groupMode = enabled
+      // Broadcast to all in room so everyone knows
+      io.to(sessionId).emit('group-mode-changed', { enabled })
+    })
+
     // Handle WebRTC signaling
     socket.on('webrtc-signal', (data) => {
       const { sessionId, signal, targetId } = data
@@ -147,6 +169,13 @@ module.exports = (io) => {
           userId: socket.id,
           message: 'Someone left the session'
         })
+        // Remove from group session peers
+        if (groupSessions[socket.sessionId]) {
+          groupSessions[socket.sessionId].peers.delete(socket.id)
+          if (groupSessions[socket.sessionId].peers.size === 0) {
+            delete groupSessions[socket.sessionId]
+          }
+        }
       }
 
       // Instant room cleanup
