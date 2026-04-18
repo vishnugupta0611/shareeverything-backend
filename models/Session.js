@@ -8,8 +8,16 @@ const SessionSchema = new mongoose.Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now,
-    expires: 7200 // 2 hours TTL
+    default: Date.now
+  },
+  expiresAt: {
+    type: Date,
+    required: true,
+    index: { expireAfterSeconds: 0 } // MongoDB TTL index on this field
+  },
+  durationSeconds: {
+    type: Number,
+    default: 3600
   },
   status: {
     type: String,
