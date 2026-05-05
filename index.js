@@ -38,6 +38,25 @@ connectDB()
 app.use('/api/sessions', require('./routes/sessions'))
 app.use('/api/signaling', require('./routes/signaling'))
 
+
+app.get("/checkserversituation",(req,res)=>{
+     
+  try {
+    return res.status(200).json({
+      success:true,
+      message:"Server is up"
+    })
+       
+  } catch (error) {
+      
+    return res.status(500).json({
+      success:false,
+      message:"Server is down due to internal server error"
+    })
+  }
+
+})
+
 // Socket.io for real-time signaling
 require('./controller/socketHandler')(io)
 
